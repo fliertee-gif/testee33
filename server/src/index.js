@@ -327,18 +327,18 @@ app.post('/api/ai/gemini-chat', verifyToken, checkSubscription(db), async (req, 
     const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
     
-    const chat = ai.chats.create({
-      model: 'gemini-2.5-flash',
-      history: history || []
-    });
+    const chat = await ai.chats.create('gemini-2.0-flash', history || null, null);
 
-    const stream = await chat.sendMessageStream({ message });
+    const stream = chat.sendMessageStream(message);
     
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
     for await (const chunk of stream) {
+      if (chunk.error) {
+        throw new Error(chunk.error);
+      }
       res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
     }
     
@@ -358,18 +358,18 @@ app.post('/api/ai/chat-with-fallback', verifyToken, checkSubscription(db), async
       const { GoogleGenAI } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
       
-      const chat = ai.chats.create({
-        model: 'gemini-2.5-flash',
-        history: history || []
-      });
+      const chat = await ai.chats.create('gemini-2.0-flash', history || null, null);
 
-      const stream = await chat.sendMessageStream({ message });
+      const stream = chat.sendMessageStream(message);
       
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
       for await (const chunk of stream) {
+        if (chunk.error) {
+          throw new Error(chunk.error);
+        }
         res.write(`data: ${JSON.stringify({ text: chunk.text, provider: 'google' })}\n\n`);
       }
       
