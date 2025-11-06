@@ -192,7 +192,7 @@ const CommunityView: React.FC = () => {
                         post={post}
                         onLikeToggle={handleLikeToggle}
                         onPinToggle={handlePinToggle}
-                        currentUser={user}
+                        currentUser={currentUser}
                     />
                 ))}
             </div>
