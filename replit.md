@@ -56,7 +56,7 @@ npm run dev
 ```
 
 ## Recent Changes
-- **2025-11-06**: Full platform implementation
+- **2025-11-06**: Full platform implementation and bug fixes
   - Backend API with Express, JWT authentication, SQLite database
   - Complete database schema (users, subscriptions, courses, lessons, progress, chat history)
   - Cakto payment integration with secure webhook verification
@@ -65,10 +65,13 @@ npm run dev
   - Subscription paywall for AI agents
   - Backend and frontend workflows running on ports 3000 and 5000
   - Vite proxy configuration connecting frontend to backend
-  - Email-based admin role assignment
+  - Email-based admin role assignment (includes teste@gmail.com)
   - Security: JWT tokens, bcrypt passwords, webhook signature verification
   - Configured Vite to use port 5000 for Replit compatibility
   - Added `allowedHosts: true` to fix Replit proxy blocking
+  - Fixed AgentView black screen by adding state management (history, chatHistories, handlers)
+  - Fixed VideoPlayerView black screen by correcting prop name (video → initialVideo)
+  - Implemented comments functionality in CommunityView with full UI and state management
 
 ## Notes
 - This app was imported from AI Studio (https://ai.studio/apps/drive/16b5ElGbSprtdan1jbs4RNGAE78kxil0q)
