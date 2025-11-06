@@ -320,6 +320,106 @@ app.post('/api/ai/openai-chat', verifyToken, checkSubscription(db), async (req, 
   }
 });
 
+app.post('/api/ai/gemini-chat', verifyToken, checkSubscription(db), async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+    
+    const chat = ai.chats.create({
+      model: 'gemini-2.5-flash',
+      history: history || []
+    });
+
+    const stream = await chat.sendMessageStream({ message });
+    
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    for await (const chunk of stream) {
+      res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+    }
+    
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    console.error('Gemini Chat error:', error);
+    res.status(500).json({ error: 'Failed to get response from Gemini' });
+  }
+});
+
+app.post('/api/ai/chat-with-fallback', verifyToken, checkSubscription(db), async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+      
+      const chat = ai.chats.create({
+        model: 'gemini-2.5-flash',
+        history: history || []
+      });
+
+      const stream = await chat.sendMessageStream({ message });
+      
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      for await (const chunk of stream) {
+        res.write(`data: ${JSON.stringify({ text: chunk.text, provider: 'google' })}\n\n`);
+      }
+      
+      res.write('data: [DONE]\n\n');
+      res.end();
+      
+      console.log('[AI Fallback] Successfully used Google Gemini');
+    } catch (googleError) {
+      console.error('[AI Fallback] Google failed, trying OpenAI:', googleError.message);
+      
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const messages = [
+        ...(history || []).map(msg => ({
+          role: msg.role === 'model' ? 'assistant' : msg.role,
+          content: msg.parts[0].text
+        })),
+        { role: 'user', content: message }
+      ];
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: messages,
+        max_tokens: 2000,
+        stream: true
+      });
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      for await (const chunk of response) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          res.write(`data: ${JSON.stringify({ text: content, provider: 'openai' })}\n\n`);
+        }
+      }
+      
+      res.write('data: [DONE]\n\n');
+      res.end();
+      
+      console.log('[AI Fallback] Successfully used OpenAI as fallback');
+    }
+  } catch (error) {
+    console.error('[AI Fallback] Both providers failed:', error);
+    res.status(500).json({ error: 'Failed to get response from AI providers' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Backend ready to accept connections`);
